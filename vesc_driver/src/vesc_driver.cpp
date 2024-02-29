@@ -207,8 +207,12 @@ void VescDriver::vescPacketCallback(const std::shared_ptr<VescPacket const> & pa
 
     auto imu_msg = VescImuStamped();
     auto std_imu_msg = Imu();
+
     imu_msg.header.stamp = now();
     std_imu_msg.header.stamp = now();
+
+    imu_msg.header.frame_id     = "imu";
+    std_imu_msg.header.frame_id = "imu";
 
     imu_msg.imu.ypr.x = imuData->roll();
     imu_msg.imu.ypr.y = imuData->pitch();
