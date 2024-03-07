@@ -52,7 +52,8 @@ def generate_launch_description():
             package='vesc_driver',
             executable='vesc_driver_node',
             name='vesc_driver_node',
-            parameters=[LaunchConfiguration("config")]
+            parameters=[LaunchConfiguration("config")],
+	    remappings=[('/sensors/imu/raw', '/imu')]
         ),
 
     ])
