@@ -6,14 +6,14 @@
 
   <!-- VESC to Odom node -->
   <node pkg="vesc_ackermann" exec="vesc_to_odom_node" name="vesc_to_odom_node" output="screen">
-    <param name="odom_frame" value="base_link" /> <!-- TODO wette: frames seem to be switched around in the code? -->
-    <param name="base_frame" value="odom" />
-    <param name="speed_to_erpm_gain" value="3540.0" />
+    <param name="odom_frame" value="odom" />
+    <param name="base_frame" value="base_link" />
+    <param name="speed_to_erpm_gain" value="-4180.0" />
     <param name="speed_to_erpm_offset" value="0.0" />
     <param name="use_servo_cmd_to_calc_angular_velocity" value="true" />
-    <param name="steering_angle_to_servo_gain" value="-1.2135" />
-    <param name="steering_angle_to_servo_offset" value="0.5304" />
-    <param name="wheelbase" value="0.33" />
+    <param name="steering_angle_to_servo_gain" value="-0.764505" /> <!-- ganz gut: -0.764505 -->
+    <param name="steering_angle_to_servo_offset" value="0.5004" /> <!-- 0.5304 -->
+    <param name="wheelbase" value="0.35" />
     <param name="publish_tf" value="true" />
   </node>
 </launch>
