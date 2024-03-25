@@ -35,6 +35,7 @@
 
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <vesc_msgs/msg/vesc_state_stamped.hpp>
+#include <sensor_msgs/msg/imu.hpp>
 
 namespace vesc_ackermann
 {
@@ -44,6 +45,7 @@ using nav_msgs::msg::Odometry;
 using std::placeholders::_1;
 using std_msgs::msg::Float64;
 using vesc_msgs::msg::VescStateStamped;
+using sensor_msgs::msg::Imu;
 
 VescToOdom::VescToOdom(const rclcpp::NodeOptions & options)
 : Node("vesc_to_odom_node", options),
@@ -59,6 +61,7 @@ VescToOdom::VescToOdom(const rclcpp::NodeOptions & options)
   odom_frame_ = declare_parameter("odom_frame", odom_frame_);
   base_frame_ = declare_parameter("base_frame", base_frame_);
   use_servo_cmd_ = declare_parameter("use_servo_cmd_to_calc_angular_velocity", use_servo_cmd_);
+  use_imu_ = declare_parameter("use_imu_to_calc_angular_velocity", use_imu_);
 
   speed_to_erpm_gain_ = declare_parameter<double>("speed_to_erpm_gain");
   speed_to_erpm_offset_ = declare_parameter<double>("speed_to_erpm_offset");
@@ -89,6 +92,16 @@ VescToOdom::VescToOdom(const rclcpp::NodeOptions & options)
     servo_sub_ = create_subscription<Float64>(
       "sensors/servo_position_command", 10, std::bind(&VescToOdom::servoCmdCallback, this, _1));
   }
+
+  //subscribe to IMU
+  if(use_imu_) {
+    imu_sub_ = create_subscription<Imu>("imu", 10, std::bind(&VescToOdom::imuCallback, this, _1));
+  }
+}
+
+void VescToOdom::imuCallback(const Imu::SharedPtr imu_msg)
+{
+  this->last_imu_reported_yaw_accel = imu_msg->angular_velocity.z;
 }
 
 void VescToOdom::vescStateCallback(const VescStateStamped::SharedPtr state)
@@ -108,6 +121,17 @@ void VescToOdom::vescStateCallback(const VescStateStamped::SharedPtr state)
     current_steering_angle =
       (last_servo_cmd_->data - steering_to_servo_offset_) / steering_to_servo_gain_;
     current_angular_velocity = current_speed * tan(current_steering_angle) / wheelbase_;
+  }
+
+  if(use_imu_) {
+    //ignore everything and just use IMU data
+
+    /** @todo: this is too simple! 
+        Think about IMU callibration to get rid of drift, 
+        time synchronization and averaging instead of last reported value, 
+        etc...
+    */
+    current_angular_velocity = this->last_imu_reported_yaw_accel;
   }
 
   // use current state as last state if this is our first time here
@@ -164,7 +188,7 @@ void VescToOdom::vescStateCallback(const VescStateStamped::SharedPtr state)
     TransformStamped tf;
     tf.header.frame_id = odom_frame_;
     tf.child_frame_id = base_frame_;
-    tf.header.stamp = now();
+    tf.header.stamp = state->header.stamp;
     tf.transform.translation.x = x_;
     tf.transform.translation.y = y_;
     tf.transform.translation.z = 0.0;
