@@ -55,7 +55,9 @@ VescToOdom::VescToOdom(const rclcpp::NodeOptions & options)
   publish_tf_(false),
   x_(0.0),
   y_(0.0),
-  yaw_(0.0)
+  yaw_(0.0),
+  imu_yaw_drift(0.0),
+  imu_yaw_drift_counter(0)
 {
   // get ROS parameters
   odom_frame_ = declare_parameter("odom_frame", odom_frame_);
@@ -101,15 +103,22 @@ VescToOdom::VescToOdom(const rclcpp::NodeOptions & options)
 
 void VescToOdom::imuCallback(const Imu::SharedPtr imu_msg)
 {
-  this->last_imu_reported_yaw_accel = imu_msg->angular_velocity.z;
+  //estimate imu yaw drift.
+  if(this->imu_yaw_drift_counter < 250) {
+    this->imu_yaw_drift += imu_msg->angular_velocity.z;
+    this->imu_yaw_drift_counter += 1;
+  } else {
+    if(this->imu_yaw_drift_counter == 250) {
+      this->imu_yaw_drift /= 250;
+      this->imu_yaw_drift_counter += 1;
+    }
+    this->last_imu_reported_yaw_accel = imu_msg->angular_velocity.z - this->imu_yaw_drift;
+  }
+  
 }
 
 void VescToOdom::vescStateCallback(const VescStateStamped::SharedPtr state)
 {
-  // check that we have a last servo command if we are depending on it for angular velocity
-  if (use_servo_cmd_ && !last_servo_cmd_) {
-    return;
-  }
 
   // convert to engineering units
   double current_speed = (-state->state.speed - speed_to_erpm_offset_) / speed_to_erpm_gain_;
@@ -149,7 +158,7 @@ void VescToOdom::vescStateCallback(const VescStateStamped::SharedPtr state)
   double y_dot = current_speed * sin(yaw_);
   x_ += x_dot * dt.seconds();
   y_ += y_dot * dt.seconds();
-  if (use_servo_cmd_) {
+  if (use_servo_cmd_ || use_imu_ ) {
     yaw_ += current_angular_velocity * dt.seconds();
   }
 
@@ -188,7 +197,7 @@ void VescToOdom::vescStateCallback(const VescStateStamped::SharedPtr state)
     TransformStamped tf;
     tf.header.frame_id = odom_frame_;
     tf.child_frame_id = base_frame_;
-    tf.header.stamp = state->header.stamp;
+    tf.header.stamp = now();
     tf.transform.translation.x = x_;
     tf.transform.translation.y = y_;
     tf.transform.translation.z = 0.0;

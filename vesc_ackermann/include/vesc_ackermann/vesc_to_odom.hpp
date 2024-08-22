@@ -70,6 +70,8 @@ private:
   //imu state
   bool use_imu_;
   double last_imu_reported_yaw_accel;
+  double imu_yaw_drift;
+  int imu_yaw_drift_counter;
 
   // odometry state
   double x_, y_, yaw_;
