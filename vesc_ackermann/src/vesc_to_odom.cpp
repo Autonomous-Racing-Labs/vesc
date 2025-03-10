@@ -112,7 +112,8 @@ void VescToOdom::imuCallback(const Imu::SharedPtr imu_msg)
       this->imu_yaw_drift /= 250;
       this->imu_yaw_drift_counter += 1;
     }
-    this->last_imu_reported_yaw_accel = imu_msg->angular_velocity.z - this->imu_yaw_drift;
+    this->last_imu_reported_yaw_accel_sum         += imu_msg->angular_velocity.z - this->imu_yaw_drift;
+    this->last_imu_reported_yaw_accel_value_count += 1;
   }
   
 }
@@ -135,11 +136,11 @@ void VescToOdom::vescStateCallback(const VescStateStamped::SharedPtr state)
   if(use_imu_) {
     //ignore everything and just use IMU data
 
-    /** @todo: this is too simple! 
-        Think about IMU callibration to get rid of drift, 
-        time synchronization and averaging instead of last reported value, 
-        etc...
-    */
+    if(this->last_imu_reported_yaw_accel_value_count > 0) {
+      this->last_imu_reported_yaw_accel = this->last_imu_reported_yaw_accel_sum / this->last_imu_reported_yaw_accel_value_count;
+      this->last_imu_reported_yaw_accel_value_count = 0;
+      this->last_imu_reported_yaw_accel_sum = 0;
+    }
     current_angular_velocity = this->last_imu_reported_yaw_accel;
   }
 

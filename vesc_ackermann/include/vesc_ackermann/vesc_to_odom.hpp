@@ -69,7 +69,9 @@ private:
 
   //imu state
   bool use_imu_;
-  double last_imu_reported_yaw_accel;
+  double last_imu_reported_yaw_accel_sum = 0;
+  double last_imu_reported_yaw_accel_value_count = 0;
+  double last_imu_reported_yaw_accel = 0;
   double imu_yaw_drift;
   int imu_yaw_drift_counter;
 
